@@ -26,24 +26,28 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#ifndef BUF_SIZE
+#define BUF_SIZE 4096
+#endif
+
 // XOR data from file with key
-int xorcat(unsigned char *key, size_t key_length, int data_fd) {
-    size_t key_index = 0;
-    unsigned char buffer[1024];
-    int rc = EXIT_SUCCESS;
+int xorcat(const unsigned char *key, const unsigned char *key_end, const unsigned char **key_iter, int data_fd) {
+    unsigned char buffer[BUF_SIZE];
     for (int res = read(data_fd, buffer, sizeof(buffer)); res != 0; res = read(data_fd, buffer, sizeof(buffer))) {
         if (res > 0) {
             for (int i = 0; i < res; i++) {
-                unsigned char encoded = buffer[i] ^ key[key_index];
-                key_index = (key_index + 1) % key_length;
+                unsigned char encoded = buffer[i] ^ *((*key_iter)++);
                 fputc(encoded, stdout);
+                if (*key_iter == key_end) {
+                    *key_iter = key;
+                }
             }
         } else {
-            rc = EXIT_FAILURE;
-            break;
+            perror("failed to read data file");
+            return EXIT_FAILURE;
         }
     }
-    return rc;
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, const char **argv) {
@@ -79,7 +83,7 @@ int main(int argc, const char **argv) {
     }
 
     // Map key into memory
-    unsigned char *key = mmap(NULL ,statbuf.st_size, PROT_READ, MAP_SHARED, key_fd, 0);
+    unsigned char *key = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, key_fd, 0);
     if(key == MAP_FAILED){
         perror("failed to read key");
         return EXIT_FAILURE;
@@ -88,8 +92,10 @@ int main(int argc, const char **argv) {
 
     // Process inputs
     int rc;
+    const unsigned char *key_end = key + statbuf.st_size;
+    const unsigned char *key_iter = key;
     if (argc < 3) {
-        rc = xorcat(key, statbuf.st_size, STDIN_FILENO);
+        rc = xorcat(key, key_end, &key_iter, STDIN_FILENO);
     } else {
         int data_fd;
         for (int i = 2; i < argc; i++) {
@@ -99,7 +105,7 @@ int main(int argc, const char **argv) {
                 return EXIT_FAILURE;
             }
 
-            rc = xorcat(key, statbuf.st_size, data_fd);
+            rc = xorcat(key, key_end, &key_iter, data_fd);
             close(data_fd);
 
             if (rc != EXIT_SUCCESS) {
