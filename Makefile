@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c99 -Wall -Wextra -pedantic -O3 -march=native
+CFLAGS=-std=c99 -Wall -Wextra -pedantic -O3 -DNDEBUG -march=native
 XORCAT=xorcat
 
 $(XORCAT): xorcat.c
