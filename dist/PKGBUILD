@@ -1,0 +1,23 @@
+pkgname='xorcat'
+pkgver='0.1.0'
+pkgrel='1'
+pkgdesc='XOR concatenation'
+arch=(any)
+url='https://github.com/protopopov1122/xorcat'
+license=('GPL3')
+
+depends=()
+makedepends=()
+source=('xorcat::git+https://github.com/protopopov1122/xorcat')
+sha512sums=('SKIP')
+
+build () {
+    cd xorcat
+    make all
+}
+
+package () {
+    cd xorcat
+    mkdir -p "$pkgdir/usr/bin"
+    install xorcat "$pkgdir/usr/bin/xorcat"
+}
